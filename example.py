@@ -38,11 +38,14 @@ def vertical_line_for(n):
                 d[idx] += WHITE * HEIGHT
     return d
 
+def horizontal_line_for(n):
+    d= {k: WHITE * (n) + BLACK + WHITE * (HEIGHT - n -1) + WHITE * (n) + BLACK + WHITE * (HEIGHT - n -1) for k in range(1, UNIVERSES+1)}
+    return d
+
 for i in range(0, 64):
-    CONTENT[str(i)] = vertical_line_for(i)
+    CONTENT["v" + str(i)] = vertical_line_for(i)
+    CONTENT["h" + str(i)] = horizontal_line_for(i)
 
-
-#print(CONTENT)
 print("initialized")
 
 frames=sys.argv[1].split(",")
