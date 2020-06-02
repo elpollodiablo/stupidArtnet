@@ -1,67 +1,59 @@
 from lib.StupidArtnet import StupidArtnet
 import time
 import random
+import sys
 
-# THESE ARE MOST LIKELY THE VALUES YOU WILL BE NEEDING
-target_ip = '192.168.1.10'		# typically in 2.x or 10.x range
-universe = 0 					# see docs
-packet_size = 100				# it is not necessary to send whole universe
+target_ip = '192.168.30.195'
+packet_size = 384
 
-# CREATING A STUPID ARTNET OBJECT
-# SETUP NEEDS A FEW ELEMENTS
-# TARGET_IP   = DEFAULT 127.0.0.1
-# UNIVERSE    = DEFAULT 0
-# PACKET_SIZE = DEFAULT 512
-# FRAME_RATE  = DEFAULT 30
-a = StupidArtnet(target_ip, universe, packet_size)
+universes = {}
+UNIVERSES = 32
+print("initializing")
+BLACK = [0x0, 0x0, 0x0]
+WHITE = [0x55, 0x55, 0x55]
+HEIGHT=64
+UNICOLS=2
 
-# MORE ADVANCED CAN BE SET WITH SETTERS IF NEEDED
-# NET         = DEFAULT 0
-# SUBNET      = DEFAULT 0
+for i in range(1, UNIVERSES+1):
+    universes[i] = StupidArtnet(target_ip, i, packet_size)
 
-# CHECK INIT
-print(a)
+CONTENT = {
+    "WHITE": {
+        k: WHITE * UNICOLS * HEIGHT for k in range(1, UNIVERSES+1)
+    },
+    "BLACK": {
+        k: BLACK * UNICOLS * HEIGHT for k in range(1, UNIVERSES+1)
+    },
+}
 
-# YOU CAN CREATE YOUR OWN BYTE ARRAY OF PACKET_SIZE
-packet = bytearray(packet_size)		# create packet for Artnet
-for i in range(packet_size):		# fill packet with sequential values
-	packet[i] = (i % 256)
+def vertical_line_for(n):
+    d = {}
+    for i in range(0, UNIVERSES):
+        idx = i + 1
+        d.setdefault(idx, [])
+        for cols in [0, 1]:
+            if i * 2 + cols == n:
+                d[idx] += BLACK * HEIGHT
+            else:
+                d[idx] += WHITE * HEIGHT
+    return d
 
-# ... AND SET IT TO STUPID ARTNET
-a.set(packet)						# only on changes
+for i in range(0, 64):
+    CONTENT[str(i)] = vertical_line_for(i)
 
-# ALL PACKETS ARE SAVED IN THE CLASS, YOU CAN CHANGE SINGLE VALUES
-a.set_single_value(1, 255)			# set channel 1 to 255
 
-# ... AND SEND
-a.show()							# send data
+#print(CONTENT)
+print("initialized")
 
-# OR USE STUPIDARTNET FUNCTIONS
-a.flash_all()						# send single packet with all channels at 255
+frames=sys.argv[1].split(",")
+framecounter=0
+framecount=len(frames)
 
-time.sleep(1)						# wait a bit, 1 sec
-
-a.blackout()						# send single packet with all channels at 0
-a.see_buffer()
-
-# ALL THE ABOVE EXAMPLES SEND A SINGLE DATAPACKET
-# STUPIDARTNET IS ALSO THREADABLE
-# TO SEND PERSISTANT SIGNAL YOU CAN START THE THREAD
-a.start()							# start continuos sendin
-
-# AND MODIFY THE DATA AS YOU GO
-for x in range(100):
-	for i in range(packet_size):  	# Fill buffer with random stuff
-		packet[i] = random.randint(0, 255)
-	a.set(packet)
-	time.sleep(.2)
-
-# SOME DEVICES WOULD HOLD LAST DATA, TURN ALL OFF WHEN DONE
-
-a.blackout()
-
-# ... REMEMBER TO CLOSE THE THREAD ONCE YOU ARE DONE
-a.stop()
-
-# CLEANUP IN THE END
-del a
+while True:
+    time.sleep(0.01 * int(sys.argv[2]))
+    for i in range(1, UNIVERSES+1):
+        universe = universes[i]
+        universe.make_header()
+        universe.set(CONTENT[frames[framecounter % framecount]][i])
+        universe.show()
+    framecounter+=1
